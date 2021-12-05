@@ -1,4 +1,4 @@
-module github.com/metachris/was-tx-uncled
+module github.com/metachris/eth-was-tx-uncled
 
 go 1.17
 
