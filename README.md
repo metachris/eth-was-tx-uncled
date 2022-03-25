@@ -3,8 +3,10 @@ Find out if a tx was uncled (first mined in a block that has been uncled, in whi
 ## Usage:
 
 ```bash
-go run . -eth ETH_NODE_URI -tx TX_HASH
+go run cmd/cli/main.go -eth ETH_NODE_URI -tx TX_HASH
 ```
+
+You can also use the environment variable `ETH_NODE_URI` to set a default node URI.
 
 ## Installation:
 
