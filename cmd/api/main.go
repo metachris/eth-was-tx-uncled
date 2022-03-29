@@ -3,18 +3,33 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/flashbots/go-utils/cli"
+	"github.com/flashbots/go-utils/httplogger"
 	"github.com/gorilla/mux"
 	"github.com/metachris/eth-was-tx-uncled/txinfo"
 )
 
-var addr = flag.String("addr", ":8080", "http service address")
-var ethNodeUriPtr = flag.String("eth", os.Getenv("ETH_NODE_URI"), "URL for eth node (eth node, Infura, etc.)")
+var (
+	version = "dev" // is set during build process
+
+	// Default values
+	defaultDebug   = os.Getenv("DEBUG") == "1"
+	defaultLogJSON = os.Getenv("LOG_JSON") == "1"
+	defaultEthNode = os.Getenv("ETH_NODE_URI")
+	defaultAddr    = cli.GetEnv("ADDR", ":8088")
+
+	// Flags
+	debugPtr      = flag.Bool("debug", defaultDebug, "print debug output")
+	logJSONPtr    = flag.Bool("log-json", defaultLogJSON, "log in JSON")
+	addr          = flag.String("addr", defaultAddr, "http service address")
+	ethNodeUriPtr = flag.String("eth", defaultEthNode, "URL for eth node (eth node, Infura, etc.)")
+)
 
 var client *ethclient.Client
 
@@ -25,6 +40,21 @@ func Perror(err error) {
 }
 
 func main() {
+	flag.Parse()
+
+	logFormat := log.TerminalFormat(true)
+	if *logJSONPtr {
+		logFormat = log.JSONFormat()
+	}
+
+	logLevel := log.LvlInfo
+	if *debugPtr {
+		logLevel = log.LvlDebug
+	}
+
+	log.Root().SetHandler(log.LvlFilterHandler(logLevel, log.StreamHandler(os.Stderr, logFormat)))
+	log.Info("Starting your-project", "version", version)
+
 	var err error
 	flag.Parse()
 
@@ -35,9 +65,13 @@ func main() {
 	r.HandleFunc("/", HandleRoot)
 	r.HandleFunc("/{txHash}", HandleTx)
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	loggedRouter := httplogger.LoggingMiddleware(r)
 
-	log.Println("HTTP server running at", *addr)
-	log.Fatal(http.ListenAndServe(*addr, r))
+	log.Info("HTTP server running", "addr", *addr)
+	err = http.ListenAndServe(*addr, loggedRouter)
+	if err != nil {
+		log.Crit("webserver failed", "err", err)
+	}
 }
 
 func HandleRoot(respw http.ResponseWriter, req *http.Request) {
@@ -53,11 +87,11 @@ func HandleTx(respw http.ResponseWriter, req *http.Request) {
 		txHash = _txHash
 	}
 
-	log.Println("Check tx:", txHash)
+	log.Info("Check tx", "txHash", txHash)
 
 	status, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(txHash))
 	if err != nil {
-		log.Println("error:", err)
+		log.Info("tx check failed", "err", err)
 		respw.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(respw, "error: %v\n", err)
 		return
