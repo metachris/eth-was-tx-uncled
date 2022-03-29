@@ -63,7 +63,12 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", HandleRoot)
+	r.HandleFunc("/x", HandleRoot)
 	r.HandleFunc("/{txHash}", HandleTx)
+	r.HandleFunc("/tx", HandleTx)
+	r.HandleFunc("/tx/", HandleTx)
+	r.HandleFunc("/tx/{txHash}", HandleTx)
+
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	loggedRouter := httplogger.LoggingMiddleware(r)
 
@@ -75,10 +80,22 @@ func main() {
 }
 
 func HandleRoot(respw http.ResponseWriter, req *http.Request) {
-	http.ServeFile(respw, req, "./home.html")
+	log.Info("aaa")
+	if req.Method == "OPTIONS" {
+		respw.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// By default, return docs
+	http.ServeFile(respw, req, "./public/index.html")
 }
 
 func HandleTx(respw http.ResponseWriter, req *http.Request) {
+	if req.Method == "OPTIONS" {
+		respw.WriteHeader(http.StatusOK)
+		return
+	}
+
 	vars := mux.Vars(req)
 	txHash := vars["txHash"]
 
