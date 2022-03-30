@@ -27,6 +27,14 @@
 
 <body>
 
+    <script type="text/javascript">
+        function find() {
+            console.log("asd")
+            document.getElementById("btnSubmit").disabled = true;
+            document.getElementById("btnSubmit").innerHTML = "Searching...";
+            document.getElementById("form").submit();
+        }
+    </script>
     <div class="grids">
         <div class="content">
             <center>
@@ -34,11 +42,11 @@
                 <br>
 
                 <p>
-                <form class="pure-form" method="get" action="/tx/">
+                <form class="pure-form" id="form" method="get" action="/tx/">
                     <fieldset>
                         <legend>Find out if a transaction was uncled:</legend>
                         <input type="text" class="pure-input-2-3" name="hash" placeholder="Transaction hash" autofocus />
-                        <button type="submit" class="pure-button pure-button-primary">Find</button>
+                        <button type="submit" id="btnSubmit" class="pure-button pure-button-primary" onclick="find()">Find</button>
                     </fieldset>
                 </form>
                 </p>

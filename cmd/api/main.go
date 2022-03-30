@@ -22,7 +22,7 @@ var (
 	defaultDebug   = os.Getenv("DEBUG") == "1"
 	defaultLogJSON = os.Getenv("LOG_JSON") == "1"
 	defaultEthNode = os.Getenv("ETH_NODE_URI")
-	defaultAddr    = cli.GetEnv("ADDR", ":8088")
+	defaultAddr    = cli.GetEnv("ADDR", "localhost:8088")
 
 	// Flags
 	debugPtr      = flag.Bool("debug", defaultDebug, "print debug output")
