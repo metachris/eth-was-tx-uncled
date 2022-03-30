@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -105,6 +106,11 @@ func HandleTx(respw http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Info("Check tx", "txHash", txHash)
+	if len(txHash) != 66 || !strings.HasPrefix(txHash, "0x") {
+		respw.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(respw, "invalid tx hash")
+		return
+	}
 
 	status, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(txHash))
 	if err != nil {
