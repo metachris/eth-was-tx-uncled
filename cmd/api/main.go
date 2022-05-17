@@ -64,15 +64,19 @@ func main() {
 	Perror(err)
 
 	r := mux.NewRouter()
+
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+
 	r.HandleFunc("/", HandleRoot)
-	r.HandleFunc("/x", HandleRoot)
 	r.HandleFunc("/{txHash}", HandleTx)
 	r.HandleFunc("/tx", HandleTx)
 	r.HandleFunc("/tx/", HandleTx)
 	r.HandleFunc("/tx/{txHash}", HandleTx)
 
-	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	loggedRouter := httplogger.LoggingMiddleware(r)
+
+	fmt.Println("XXX")
 
 	log.Info("HTTP server running", "addr", *addr)
 	err = http.ListenAndServe(*addr, loggedRouter)
@@ -82,13 +86,11 @@ func main() {
 }
 
 func HandleRoot(respw http.ResponseWriter, req *http.Request) {
-	log.Info("aaa")
 	if req.Method == "OPTIONS" {
 		respw.WriteHeader(http.StatusOK)
 		return
 	}
 
-	// By default, return docs
 	http.ServeFile(respw, req, "./public/index.html")
 }
 
