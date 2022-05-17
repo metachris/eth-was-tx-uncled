@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"strings"
@@ -91,6 +92,18 @@ func HandleRoot(respw http.ResponseWriter, req *http.Request) {
 	http.ServeFile(respw, req, "./public/index.html")
 }
 
+type ResultTemplateData struct {
+	Err      string
+	TxKnown  bool
+	TxUncled bool
+	TxHash   string
+
+	MinedBlockNumber uint64
+	MinedBlockHash   string
+	UncleBlockNumber uint64
+	UncleBlockHash   string
+}
+
 func HandleTx(respw http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		respw.WriteHeader(http.StatusOK)
@@ -105,29 +118,47 @@ func HandleTx(respw http.ResponseWriter, req *http.Request) {
 		txHash = _txHash
 	}
 
-	log.Info("Check tx", "txHash", txHash)
-	if len(txHash) != 66 || !strings.HasPrefix(txHash, "0x") {
-		respw.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(respw, "invalid tx hash")
-		return
+	td := ResultTemplateData{
+		TxHash: txHash,
 	}
 
-	status, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(txHash))
+	t, err := template.ParseFiles("./public/result.html")
 	if err != nil {
-		log.Info("tx check failed", "err", err)
-		respw.WriteHeader(http.StatusBadRequest)
+		log.Error("parsing template failed:", "err", err)
+		respw.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(respw, "error: %v\n", err)
 		return
 	}
 
-	msg := ""
-	if status == txinfo.StatusTxUnknown {
-		msg = "tx not found"
-	} else if status == txinfo.StatusTxNotUncled {
-		msg = "tx not uncled"
-	} else if status == txinfo.StatusTxWasUncled {
-		msg = fmt.Sprintf("tx was uncled in block %s %s\n", uncleBlock.Number(), uncleBlock.Hash().Hex())
+	defer func() {
+		err = t.Execute(respw, td)
+		if err != nil {
+			log.Error("parsing template failed:", "err", err)
+			respw.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(respw, "error: %v\n", err)
+			return
+		}
+	}()
+
+	log.Info("Check tx", "txHash", txHash)
+	if len(txHash) != 66 || !strings.HasPrefix(txHash, "0x") {
+		td.Err = "invalid tx hash"
+		return
 	}
 
-	fmt.Fprint(respw, msg)
+	status, minedBlock, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(txHash))
+	if err != nil {
+		log.Error("tx check failed", "err", err)
+		td.Err = fmt.Sprintf("invalid tx hash: %s", err)
+		return
+	}
+
+	td.TxKnown = status != txinfo.StatusTxUnknown
+	td.TxUncled = status == txinfo.StatusTxWasUncled
+	td.MinedBlockNumber = minedBlock.NumberU64()
+	td.MinedBlockHash = minedBlock.Hash().Hex()
+	if td.TxUncled {
+		td.UncleBlockNumber = uncleBlock.NumberU64()
+		td.UncleBlockHash = uncleBlock.Hash().Hex()
+	}
 }

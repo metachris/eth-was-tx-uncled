@@ -33,7 +33,7 @@ func main() {
 	client, err := ethclient.Dial(*ethNodeUriPtr)
 	Perror(err)
 
-	status, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(*txHashPtr))
+	status, _, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(*txHashPtr))
 	Perror(err)
 
 	if status == txinfo.StatusTxUnknown {

@@ -27,29 +27,30 @@
 
 <body>
 
-    <script type="text/javascript">
-        function find() {
-            document.getElementById("btnSubmit").disabled = true;
-            document.getElementById("btnSubmit").innerHTML = "Searching...";
-            document.getElementById("form").submit();
-        }
-    </script>
     <div class="grids">
         <div class="content">
             <center>
                 <h1><a href="/">Was Tx Uncled?</a></h1>
+                <p>Transaction hash:</p>
+                <p><a href="https://etherscan.io/tx/{{ .TxHash }}">{{ .TxHash }}</a></p>
+                {{ if .TxKnown }}<p>mined in block <a href="https://etherscan.io/block/{{ .MinedBlockNumber }}">{{ .MinedBlockNumber }}</a></p>{{ end }}
                 <br>
 
                 <p>
-                <form class="pure-form" id="form" method="get" action="/tx/">
-                    <fieldset>
-                        <legend>
-                            <p>Find out if an Ethereum transaction was uncled:</p>
-                        </legend>
-                        <input type="text" class="pure-input-2-3" name="hash" placeholder="Transaction hash" autofocus />
-                        <button type="submit" id="btnSubmit" class="pure-button pure-button-primary" onclick="find()">Find</button>
-                    </fieldset>
-                </form>
+                    {{ if .Err }}
+                    <b>{{ .Err }}</b>
+                    {{ else }}
+                    {{ if not .TxKnown }}
+                <h2>Transaction unknown</h2>
+                {{ else }}
+                {{ if .TxUncled }}
+                <h2>Transaction uncled</h2>
+                Transaction was originally minded in uncled block <a href="https://etherscan.io/uncle/{{ .UncleBlockHash }}">{{ .UncleBlockNumber }} {{ .UncleBlockHash }}</a>
+                {{ else }}
+                <h2>Transaction NOT uncled</h2>
+                {{ end }}
+                {{ end }}
+                {{ end }}
                 </p>
 
                 <p>

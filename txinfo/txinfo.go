@@ -20,39 +20,40 @@ var (
 	StatusTxWasUncled TxStatus = "TxWasUncled"
 )
 
-func WasTxUncled(client *ethclient.Client, txHash common.Hash) (status TxStatus, foundInUncleBlock *types.Block, err error) {
+func WasTxUncled(client *ethclient.Client, txHash common.Hash) (status TxStatus, minedBlock *types.Block, foundInUncleBlock *types.Block, err error) {
 	tx, _, err := client.TransactionByHash(context.Background(), txHash)
 	if err == ethereum.NotFound {
-		return StatusTxUnknown, nil, nil
+		return StatusTxUnknown, minedBlock, nil, nil
 	} else if err != nil {
-		return StatusTxUnknown, nil, errors.Wrap(err, "failed to get transaction by hash")
+		return StatusTxUnknown, minedBlock, nil, errors.Wrap(err, "failed to get transaction by hash")
 	}
 
 	receipt, err := client.TransactionReceipt(context.Background(), tx.Hash())
 	if err != nil {
-		return StatusTxUnknown, nil, errors.Wrap(err, "failed to get transaction receipt")
+		return StatusTxUnknown, minedBlock, nil, errors.Wrap(err, "failed to get transaction receipt")
 	}
 
-	currentBlock, err := client.BlockByHash(context.Background(), receipt.BlockHash)
+	minedBlock, err = client.BlockByHash(context.Background(), receipt.BlockHash)
 	if err != nil {
-		return StatusTxUnknown, nil, errors.Wrap(err, "failed to get block by hash")
+		return StatusTxUnknown, minedBlock, nil, errors.Wrap(err, "failed to get block by hash")
 	}
 
 	// check uncles of included block, and if not found check the previous few blocks for uncles
+	currentBlock := minedBlock
 	for blocksTried := 0; blocksTried < 6; blocksTried++ {
 		found, foundInBlock := IsTxFoundInOneOfBlockUncles(client, currentBlock, tx.Hash())
 		if found {
-			return StatusTxWasUncled, foundInBlock, nil
+			return StatusTxWasUncled, minedBlock, foundInBlock, nil
 		}
 
 		prevBlockNumber := big.NewInt(currentBlock.Number().Int64() - 1)
 		currentBlock, err = client.BlockByNumber(context.Background(), prevBlockNumber)
 		if err != nil {
-			return StatusTxUnknown, nil, errors.Wrap(err, "failed to get block by number")
+			return StatusTxUnknown, minedBlock, nil, errors.Wrap(err, "failed to get block by number")
 		}
 	}
 
-	return StatusTxNotUncled, nil, nil
+	return StatusTxNotUncled, minedBlock, nil, nil
 }
 
 func IsTxFoundInOneOfBlockUncles(client *ethclient.Client, block *types.Block, txHash common.Hash) (found bool, foundInBlock *types.Block) {
