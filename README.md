@@ -12,7 +12,7 @@ You can also use the environment variable `ETH_NODE_URI` to set a default node U
 
 ```bash
 # Install
-go install github.com/metachris/eth-was-tx-uncled/cmd/cli@latest
+go install github.com/metachris/eth-was-tx-uncled@latest
 
 # Use
 eth-was-tx-uncled -h

@@ -5,36 +5,39 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/metachris/eth-was-tx-uncled/txinfo"
 )
 
-var ethNodeUriPtr = flag.String("eth", os.Getenv("ETH_NODE_URI"), "URL for eth node (eth node, Infura, etc.)")
-var txHashPtr = flag.String("tx", "", "tx hash")
-
-func Perror(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
+var (
+	ethNodeUriPtr = flag.String("eth", os.Getenv("ETH_NODE_URI"), "URL for eth node (eth node, Infura, etc.)")
+	txHashPtr     = flag.String("tx", "", "tx hash")
+)
 
 func main() {
 	flag.Parse()
+	log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 
 	if *ethNodeUriPtr == "" {
-		panic("No eth node URI provided")
+		log.Crit("No eth node URI provided")
 	}
 
 	if *txHashPtr == "" {
-		panic("No eth node URI provided")
+		log.Crit("No tx hash provided")
 	}
 
 	client, err := ethclient.Dial(*ethNodeUriPtr)
-	Perror(err)
+	if err != nil {
+		log.Crit("Failed to connect to eth node", "err", err)
+	}
 
 	status, _, uncleBlock, err := txinfo.WasTxUncled(client, common.HexToHash(*txHashPtr))
-	Perror(err)
+	if err != nil {
+		log.Crit("Failed to check tx", "err", err)
+	}
 
 	if status == txinfo.StatusTxUnknown {
 		fmt.Println("tx not found")
